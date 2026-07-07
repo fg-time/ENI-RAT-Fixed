@@ -1,196 +1,237 @@
-# ENI-RAT — Fixed Edition
+# ENI-RAT 修复版 (Fixed Edition)
 
-**Remote Administration Toolkit — Command & Control Framework**
+> **中文** | [English](#english)
 
-A complete C2 framework designed for red team operations, security assessments, and authorized penetration testing. End-to-end AES-256 encryption, cross-platform agents, and a browser-based control panel.
+**远程管理工具包 — C2 命令与控制框架**
 
-**Fork of [Adam-ZS/ENI-RAT](https://github.com/Adam-ZS/ENI-RAT) by [@Adam-ZS](https://github.com/Adam-ZS).**
+面向红队行动、安全评估和授权渗透测试的完整 C2 框架。端到端 AES-256 加密、跨平台 Agent、浏览器控制面板。
+
+**基于 [Adam-ZS/ENI-RAT](https://github.com/Adam-ZS/ENI-RAT) 修复，原作者 [@Adam-ZS](https://github.com/Adam-ZS)。**
 
 ```
-This tool is for authorized security testing and educational purposes only.
-Unauthorized access to computer systems is illegal. You are responsible
-for complying with all applicable laws.
+本工具仅限授权安全测试和教育用途。
+未经授权访问计算机系统属于违法行为。使用者须遵守所有适用法律。
 ```
 
 ---
 
-## What This Fork Fixes (9 Critical Bugs)
+## 本 Fork 修复内容（9 个关键 Bug）
 
-The original had 9 bugs that prevented the C2-agent pipeline from working on Windows:
+原始版本有 9 个 Bug 导致 C2-Agent 管道在 Windows 上完全不可用：
 
-| # | Bug | Impact | Fix |
-|---|-----|--------|-----|
-| 1 | WebSocket RFC 6455 client masking missing | Agent never connected to C2 server | Frames now masked per protocol spec |
-| 2 | Keylogger `import ctypes.windll.user32` | Agent crashed on startup | Fixed to `user32 = ctypes.windll.user32` |
-| 3 | REST API tasks only in memory, not DB | Web dashboard commands never executed | `get_pending_tasks()` reads SQLite |
-| 4 | Heartbeat ack collides with task response | Agent consumed wrong WebSocket frames | Heartbeat silent; drain loop handles mixed types |
-| 5 | No exception guard on task execution | One failing task kills entire check-thread | Every task wrapped in try/except |
-| 6 | Agent ID regenerated on every reconnect | Web dashboard targeted dead agent IDs | Hostname match reuses existing agent_id |
-| 7 | No auto-reconnect on disconnect | Dead socket spin, threads never recover | Disconnect detection + exponential backoff |
-| 8 | Google Fonts @import blocks dashboard | Web panel hangs on firewalled networks | System font stack, zero external deps |
-| 9 | GBK encoding crashes on Windows | Emoji in print() kills server startup | UTF-8 enforced via PYTHONIOENCODING |
+| # | Bug | 影响 | 修复 |
+|---|-----|------|------|
+| 1 | WebSocket 客户端帧缺少 RFC 6455 Masking | Agent 永远连不上 C2 服务器 | 按协议规范为帧添加掩码 |
+| 2 | Keylogger  语法错误 | Agent 启动即崩溃 | 修正为  |
+| 3 | REST API 任务只写内存不查 DB | Web 面板发命令 Agent 拿不到 |  改为读 SQLite |
+| 4 | 心跳 ack 与任务响应帧碰撞 | Agent 消费了错误的 WebSocket 帧 | 心跳静默处理；循环排空混合响应 |
+| 5 | 任务执行无异常保护 | 一个任务失败整个线程崩 | 所有任务包 try/except |
+| 6 | 每次重连生成新 Agent ID | Web 面板命令发到僵尸 Agent | hostname 匹配复用已有 agent_id |
+| 7 | 断线不重连 | 死 socket 空转，线程永不复原 | 断线检测 + 指数退避重试 |
+| 8 | Google Fonts @import 阻塞面板 | 防火墙环境下页面卡死 | 改用系统字体，零外部依赖 |
+| 9 | Windows GBK 编码崩溃 | emoji 导致服务器启动失败 | PYTHONIOENCODING=utf-8 |
 
-## What's New in This Edition
+## 新增功能
 
-- **`start.bat`** — Double-click to launch C2 + API + Dashboard
-- **Dead agent auto-detection** — 60s no heartbeat → status = dead
-- **MachineGuid fingerprint** — Same machine = same agent_id across reconnects
-- **Thread-safe WebSocket** — Lock-protected send/recv across threads
-- **Auto-reconnect** — Agent recovers from network drops automatically
+- **`start.bat`** — 双击一键启动 C2 + API + 面板
+- **死 Agent 自动检测** — 60 秒无心跳 → 状态标 dead
+- **MachineGuid 指纹** — 同机器重连保持相同 agent_id
+- **WebSocket 线程安全** — send/recv 锁保护
+- **自动重连** — 网络恢复后 Agent 自己回来
 
-## Known Issues (Not Yet Fixed)
+## 已知未修复
 
-| Issue | Status |
-|-------|--------|
-| Screenshot resolution hardcoded to 1920x1080 | Fixed in source, pending rebuild |
-| No file browser — single file upload/download only | Missing feature |
-| No remote desktop — screenshot only, no streaming | Missing feature |
-| Process injection is a stub | Not implemented |
-| AV evasion uses basic user-mode patching | Weak against EDR |
+| 问题 | 状态 |
+|------|------|
+| 截图分辨率硬编码 1920x1080 | 源码已修，待重新构建 |
+| 无文件管理器 — 仅支持单文件上传/下载 | 功能缺失 |
+| 无远程桌面 — 仅截图，无实时画面 | 功能缺失 |
+| 进程注入仅为空壳函数 | 未实现 |
+| AV 免杀仅用户态 patch（VirtualProtect） | 对抗 EDR 较弱 |
 
 ---
 
-## Quick Start
+## 快速开始
 
-### Requirements
+### 环境
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Start the C2 Server
+### 启动 C2 服务器
 
-**Windows (Recommended):**
+**Windows（推荐）：**
 ```
-Double-click start.bat
+双击 start.bat
 ```
-Opens C2 WebSocket, REST API, and web dashboard automatically.
+自动启动 C2 WebSocket、REST API 和 Web 面板。
 
-**Manual:**
+**手动：**
 ```bash
 set PYTHONIOENCODING=utf-8
 python start.py
 ```
 
-This starts two services:
-- A WebSocket server on port 8443 (agent communications)
-- A REST API and web dashboard on port 5000
+启动两个服务：
+- WebSocket 服务器端口 8443（Agent 通信）
+- REST API 和 Web 面板端口 5000
 
-Open `http://localhost:5000` in a browser to see the control panel.
+浏览器打开  进入控制面板。
 
-### Build a Payload
+### 构建 Payload
 
 ```bash
-python builder/builder.py --host YOUR_IP_ADDRESS
+python builder/builder.py --host 你的IP地址
 ```
 
-The builder takes your C2 server's IP or hostname and embeds it into the agent payload along with a unique AES-256 key pair. The output is a Python script that, when run on the target, connects back to your C2.
+Builder 将 C2 服务器 IP 嵌入 Payload，同时生成唯一的 AES-256 密钥对。
 
-**Builder options:**
+**Builder 参数：**
 
-| Flag | Description |
-|---|---|
-| `--host` | C2 server IP or hostname (required) |
-| `--ws-port` | WebSocket port (default: 8443) |
-| `--api-port` | REST API port (default: 5000) |
-| `--compile` | Compile to a Windows executable via PyInstaller (--noconsole, hidden) |
-| `--obfuscate` | Obfuscate with PyArmor |
-| `--no-persistence` | Exclude persistence mechanisms |
-| `--no-sandbox-check` | Exclude sandbox/VM detection |
+| 参数 | 说明 |
+|------|------|
+|  | C2 服务器 IP 或主机名（必填） |
+|  | WebSocket 端口（默认 8443） |
+|  | REST API 端口（默认 5000） |
+|  | PyInstaller 编译为 Windows 可执行文件（无窗口） |
+|  | PyArmor 混淆 |
+|  | 不安装持久化 |
+|  | 跳过沙箱/虚拟机检测 |
 
 ---
 
-## Architecture
+## 架构
 
 ```
-  TARGET MACHINE                   YOUR MACHINE
+  目标机器                        你的机器
   +-----------------+             +----------------------+
-  |   Agent          |             |   C2 Server          |
+  |   Agent          |             |   C2 服务器           |
   |   (payload.py    |<--AES-256--|                      |
-  |    or .exe)      |  WebSocket  |  WebSocket :8443     |
+  |    或 .exe)      |  WebSocket  |  WebSocket :8443     |
   |                  |             |  REST API  :5000     |
-  |  - Keylogger     |             |  SQLite Database     |
-  |  - Screenshot    |             |  Web Dashboard       |
-  |  - Shell         |             |  Dead Agent Scanner  |
-  |  - File ops      |             |                      |
-  |  - Persistence   |             +----------+-----------+
-  |  - AV evasion    |                        |
-  |  - Auto-reconnect|              +----------+-----------+
-  +-----------------+              |  Control Interface   |
+  |  - 键盘记录      |             |  SQLite 数据库       |
+  |  - 屏幕截图      |             |  Web 面板            |
+  |  - Shell 执行    |             |  死 Agent 检测       |
+  |  - 文件操作      |             |                      |
+  |  - 持久化        |             +----------+-----------+
+  |  - AV 免杀       |                        |
+  |  - 自动重连      |              +----------+-----------+
+  +-----------------+              |  控制界面            |
                                    |                      |
-                                   |  Web Dashboard       |
-                                   |  Desktop GUI          |
-                                   |  Command Line        |
+                                   |  Web 面板            |
+                                   |  桌面 GUI            |
+                                   |  命令行              |
                                    +----------------------+
 ```
 
 ---
 
-## Agent Commands
+## Agent 命令
 
-Once an agent checks in, you can send it commands through the C2 interface.
+Agent 上线后通过 C2 面板发送命令：
 
-| Command | What It Does |
-|---|---|
-| `shell <command>` | Execute a shell command on the target |
-| `screenshot` | Capture the target's screen and return the image |
-| `keylog_start` | Begin capturing keystrokes |
-| `keylog_stop` | Stop the keylogger and retrieve captured data |
-| `upload <path>` | Read a file from the target and exfiltrate it to the C2 |
-| `download <url> <path>` | Download a file from a URL and save it to the target |
-| `persist` | Install persistence on the target |
-| `kill_av` | Attempt to terminate antivirus processes |
-| `info` | Return system information (OS, hostname, user, IPs) |
-| `sleep <seconds>` | Pause the agent for a specified duration |
-| `exit` | Tell the agent to terminate |
-| `selfdestruct` | Remove all traces, persistence mechanisms, and delete the agent binary |
+| 命令 | 功能 |
+|------|------|
+|  | 在目标执行系统命令 |
+|  | 截取屏幕并回传图片 |
+|  | 开始键盘记录 |
+|  | 停止键盘记录并回传 |
+|  | 窃取目标文件 |
+|  | 下载文件到目标 |
+|  | 安装持久化 |
+|  | 尝试终止杀软进程 |
+|  | 返回系统信息 |
+|  | 暂停 Agent 指定时长 |
+|  | 退出 Agent |
+|  | 清除所有痕迹并删除自身 |
 
 ---
 
-## Project Structure
+## 项目结构
 
 ```
 +-- server/
-|   +-- c2_core.py          WebSocket C2 server and agent communication handler
-|   +-- api_server.py       REST API and browser-based web dashboard
+|   +-- c2_core.py          WebSocket C2 服务器
+|   +-- api_server.py       REST API 和 Web 面板
 +-- client/
-|   +-- payload.py          Cross-platform agent (Windows and Linux)
+|   +-- payload.py          跨平台 Agent
 +-- gui/
-|   +-- rat_gui.py          Desktop GUI built with CustomTkinter
+|   +-- rat_gui.py          桌面 GUI
 +-- builder/
-|   +-- builder.py          Payload builder with configuration injection
-|   +-- update_ddns.sh      DDNS update script for the C2 server
+|   +-- builder.py          Payload 构建器
+|   +-- update_ddns.sh      DDNS 更新脚本
 +-- docs/
-|   +-- specs/              Design documents
-+-- start.py                Launches both C2 server and API server
-+-- start.bat               One-click Windows launcher
-+-- requirements.txt        Python dependencies
-+-- README.md
+|   +-- specs/              设计文档
++-- start.py                启动脚本
++-- start.bat               Windows 一键启动
++-- requirements.txt        Python 依赖
 ```
 
 ---
 
-## Encryption
+## 加密
 
-All agent-to-C2 communications are encrypted with AES-256 in CBC mode. Each build generates a unique 32-byte key and 16-byte initialization vector. These are embedded in the agent payload during the build process and never transmitted over the network.
-
----
-
-## Requirements
-
-- Python 3.8 or later
-- Linux or Windows for the C2 server
-- Windows or Linux for agents
-- Dependencies listed in requirements.txt
+Agent 与 C2 之间所有通信使用 AES-256 CBC 模式加密。每次构建生成唯一的 32 字节密钥和 16 字节 IV，嵌入 Payload，绝不通过网络传输。
 
 ---
 
-## License and Disclaimer
+## 系统要求
 
-This software is provided for authorized security testing, research, and educational purposes. Unauthorized access to computer systems is illegal. The authors assume no liability and are not responsible for any misuse or damage caused by this program.
-
-By using this software, you agree that you are solely responsible for complying with all applicable local, state, national, and international laws.
+- Python 3.8+
+- C2 服务器：Linux 或 Windows
+- Agent：Windows 或 Linux
+- 依赖见 requirements.txt
 
 ---
 
-**Fixed Edition maintained by [@fg-time](https://github.com/fg-time). Original by [@Adam-ZS](https://github.com/Adam-ZS). Built for red team operations.**
+## 许可证与免责声明
+
+本软件仅供授权安全测试、研究和教育用途。未经授权访问计算机系统属于违法行为。作者不承担任何责任，不对任何滥用或损害负责。
+
+使用本软件即表示你同意遵守所有适用的地方、州、国家和国际法律。
+
+---
+
+**修复版维护者 [@fg-time](https://github.com/fg-time)。原作者 [@Adam-ZS](https://github.com/Adam-ZS)。为红队行动而生。**
+
+---
+
+<a name="english"></a>
+## English
+
+**Fork of [Adam-ZS/ENI-RAT](https://github.com/Adam-ZS/ENI-RAT) by [@Adam-ZS](https://github.com/Adam-ZS)** — C2 framework with 9 critical bugs fixed for Windows deployment.
+
+### Bug Fixes Summary
+
+| # | Bug | Fix |
+|---|-----|-----|
+| 1 | WebSocket client masking missing | RFC 6455 compliant masking |
+| 2 | Keylogger import syntax error | Fixed  access |
+| 3 | REST API task queue isolated from C2 | DB-driven task queue |
+| 4 | Heartbeat/task response race | Silent heartbeat + drain loop |
+| 5 | No exception guard on tasks | try/except wrapper |
+| 6 | Agent ID regenerated each reconnect | Hostname-based ID reuse |
+| 7 | No auto-reconnect | Disconnect detection + backoff |
+| 8 | Google Fonts @import | System font stack |
+| 9 | GBK encoding crash | PYTHONIOENCODING=utf-8 |
+
+### New Features
+
+-  — one-click launcher
+- Dead agent detection (60s timeout)
+- MachineGuid fingerprint
+- Thread-safe WebSocket
+- Auto-reconnect
+
+### Known Issues
+
+| Issue | Status |
+|-------|--------|
+| Screenshot resolution hardcoded | Fixed, pending rebuild |
+| No file browser | Missing |
+| No remote desktop | Missing |
+| Process injection stub | Not implemented |
+| Basic AV evasion | Weak against EDR |
+
+**Fixed Edition by [@fg-time](https://github.com/fg-time). Original by [@Adam-ZS](https://github.com/Adam-ZS). Built for red team operations.**
