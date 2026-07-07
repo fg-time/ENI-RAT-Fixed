@@ -513,8 +513,15 @@ class CommandHandler:
     def take_screenshot() -> dict:
         """Take a screenshot and return base64"""
         try:
+            # Get actual screen dimensions
+            width, height = 1920, 1080
             if sys.platform == "win32":
-                import io
+                try:
+                    width = ctypes.windll.user32.GetSystemMetrics(0)   # SM_CXSCREEN
+                    height = ctypes.windll.user32.GetSystemMetrics(1)  # SM_CYSCREEN
+                except:
+                    pass
+            if sys.platform == "win32":
                 # Use built-in Windows screenshot via PowerShell
                 cmd = (
                     'powershell -Command "Add-Type -AssemblyName System.Windows.Forms; '
@@ -531,7 +538,7 @@ class CommandHandler:
                 result = subprocess.run(cmd, shell=True, timeout=30,
                                        capture_output=True, text=True)
                 b64_data = result.stdout.strip()
-                return {"image": b64_data, "width": 1920, "height": 1080}
+                return {"image": b64_data, "width": width, "height": height}
             else:
                 # Linux - try scrot
                 import io, base64
@@ -542,7 +549,7 @@ class CommandHandler:
                 with open("/tmp/.screen.png", "rb") as f:
                     b64_data = base64.b64encode(f.read()).decode()
                 os.remove("/tmp/.screen.png")
-                return {"image": b64_data, "width": 1920, "height": 1080}
+                return {"image": b64_data, "width": width, "height": height}
         except Exception as e:
             return {"error": str(e)}
 
